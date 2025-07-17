@@ -1,0 +1,92 @@
+package app
+
+import (
+	"context"
+	"database/sql"
+	"fmt"
+	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/ilyapiatykh/itk/config"
+	"github.com/ilyapiatykh/itk/internal/api"
+	"github.com/ilyapiatykh/itk/internal/repo"
+	"github.com/ilyapiatykh/itk/internal/service"
+	_ "github.com/ilyapiatykh/itk/pkg/logging"
+	_ "github.com/jackc/pgx/v5/stdlib"
+)
+
+func Run(cfg *config.Config) {
+	URL := fmt.Sprintf(
+		"postgres://%s:%s@postgres:5432/%s",
+		cfg.User,
+		cfg.Password,
+		cfg.DB,
+	)
+
+	if err := migrateDB(URL); err != nil {
+		panic(err)
+	}
+
+	db, err := sql.Open("pgx", URL)
+	if err != nil {
+		panic(err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	if err := db.PingContext(ctx); err != nil {
+		panic(err)
+	}
+
+	var (
+		repo    = repo.NewWallets(db)
+		service = service.NewWallets(repo)
+		router  = api.NewRouter(cfg, service)
+	)
+
+	var (
+		osSignals = make(chan os.Signal, 1)
+		errCh     = make(chan error, 1)
+	)
+	signal.Notify(osSignals, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		err = router.Start()
+		if err != nil {
+			errCh <- err
+		}
+	}()
+
+	select {
+	case <-osSignals:
+		stopService(router)
+
+		slog.Info("service was stopped")
+	case err := <-errCh:
+		slog.Error(
+			"service failed",
+			slog.Any("error", err),
+		)
+
+		stopService(router)
+
+		slog.Info("service was stopped")
+		os.Exit(1)
+	}
+}
+
+func stopService(r *api.Router) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	if err := r.Stop(ctx); err != nil {
+		slog.Error(
+			"failed to gracefully stop service",
+			slog.Any("error", err),
+		)
+	}
+}
