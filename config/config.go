@@ -10,7 +10,7 @@ type (
 	DB struct {
 		User     string `env:"POSTGRES_USER"`
 		Password string `env:"POSTGRES_PASSWORD"`
-		DB       string `env:"POSTGRES_DB"`
+		DBName   string `env:"POSTGRES_DB"`
 	}
 
 	Server struct {

@@ -27,16 +27,17 @@ type Router struct {
 	port      string
 }
 
-func NewRouter(cfg *config.Config, service serviceProvider) *Router {
+func NewRouter(cfg *config.Server, service serviceProvider) *Router {
 	r := router.New()
 
 	router := &Router{
 		service: service,
 		server: &fasthttp.Server{
-			ReadTimeout: cfg.Server.ReadTimeout,
+			ReadTimeout: cfg.ReadTimeout,
 			Handler:     r.Handler,
 		},
 		validator: validator.New(),
+		port: cfg.Port,
 	}
 
 	r.GET("/status", func(ctx *fasthttp.RequestCtx) {

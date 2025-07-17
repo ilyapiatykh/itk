@@ -2,11 +2,13 @@ package api
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/fasthttp/router"
 	"github.com/google/uuid"
 	"github.com/ilyapiatykh/itk/internal/models"
+	"github.com/ilyapiatykh/itk/internal/repo"
 	"github.com/valyala/fasthttp"
 )
 
@@ -42,7 +44,14 @@ func (r *Router) postWallet() func(ctx *fasthttp.RequestCtx) {
 
 		wallet, err := r.service.UpdateWallet(ctx, body.WalletID, body.Amount, body.OperationType)
 		if err != nil {
+			// TODO
+			if errors.Is(err, repo.ErrNegativeBalance) {
+				sendError(ctx, err.Error(), fasthttp.StatusBadRequest, err)
+				return
+			}
+
 			sendError(ctx, "server error", fasthttp.StatusInternalServerError, err)
+			return
 		}
 
 		sendJSON(ctx, wallet, fasthttp.StatusOK)
@@ -51,15 +60,23 @@ func (r *Router) postWallet() func(ctx *fasthttp.RequestCtx) {
 
 func (r *Router) getWallet() func(ctx *fasthttp.RequestCtx) {
 	return func(ctx *fasthttp.RequestCtx) {
-		id, ok := ctx.UserValue(_walletUUID).(uuid.UUID)
-		if !ok {
+		rawID, _ := ctx.UserValue(_walletUUID).(string)
+		id, err := uuid.Parse(rawID)
+		if err != nil {
 			sendError(ctx, "unsupported uuid format", fasthttp.StatusBadRequest, nil)
 			return
 		}
 
 		wallet, err := r.service.GetWallet(ctx, id)
 		if err != nil {
+			// TODO
+			if errors.Is(err, repo.ErrNoWallet) {
+				sendError(ctx, "no such wallet", fasthttp.StatusBadRequest, err)
+				return
+			}
+
 			sendError(ctx, "server error", fasthttp.StatusInternalServerError, err)
+			return
 		}
 
 		sendJSON(ctx, wallet, fasthttp.StatusOK)

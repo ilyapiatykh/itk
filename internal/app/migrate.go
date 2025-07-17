@@ -52,9 +52,9 @@ func migrateDB(URL string) error {
 
 	if errors.Is(err, migrate.ErrNoChange) {
 		slog.Info("no new change")
+		return nil
 	}
 
 	slog.Info("success")
-
 	return nil
 }

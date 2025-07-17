@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log/slog"
 	"sync"
 
 	"github.com/google/uuid"
@@ -18,6 +19,7 @@ const (
 		INSERT INTO wallets (id, balance) VALUES ($1, $2)
 			ON CONFLICT (id) DO UPDATE
 			SET balance = wallets.balance + $2
+			WHERE wallets.balance + $2 >= 0
 			RETURNING balance;`
 )
 
@@ -63,6 +65,12 @@ func (w *Wallets) GetBalance(ctx context.Context, id uuid.UUID) (float64, error)
 			return 0, ErrNoWallet
 		}
 
+		slog.Error(
+			"failed to get balance",
+			slog.String("id", id.String()),
+			slog.Any("error", err),
+		)
+
 		return 0, err
 	}
 
@@ -73,10 +81,20 @@ func (w *Wallets) GetBalance(ctx context.Context, id uuid.UUID) (float64, error)
 
 func (w *Wallets) UpdateBalance(ctx context.Context, id uuid.UUID, amount float64) (float64, error) {
 	var balance float64
-	err := w.db.QueryRowContext(ctx, queryGetWallet, id, amount).Scan(&balance)
+	err := w.db.QueryRowContext(ctx, queryCreateOrUpdateWallet, id, amount).Scan(&balance)
 	if err != nil {
-		// TODO
-		return 0, ErrNegativeBalance
+		if errors.Is(err, sql.ErrNoRows) {
+			return 0, ErrNegativeBalance
+		}
+
+		slog.Error(
+			"failed to update balance",
+			slog.String("id", id.String()),
+			slog.Float64("amount", amount),
+			slog.Any("error", err),
+		)
+
+		return 0, err
 	}
 
 	w.cache.set(id, balance)

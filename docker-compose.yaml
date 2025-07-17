@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   service:
     build: ./
@@ -8,7 +6,7 @@ services:
     ports:
       - "80${PORT}"
     depends_on:
-      - postgres
+      - db
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost${PORT}/status"]
       interval: 10s

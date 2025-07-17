@@ -23,7 +23,7 @@ func Run(cfg *config.Config) {
 		"postgres://%s:%s@postgres:5432/%s",
 		cfg.User,
 		cfg.Password,
-		cfg.DB,
+		cfg.DBName,
 	)
 
 	if err := migrateDB(URL); err != nil {
@@ -34,6 +34,9 @@ func Run(cfg *config.Config) {
 	if err != nil {
 		panic(err)
 	}
+	// To reuse conns and not create new ones without PgBouncer
+	db.SetMaxIdleConns(10)
+	db.SetMaxOpenConns(10)
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
@@ -45,7 +48,7 @@ func Run(cfg *config.Config) {
 	var (
 		repo    = repo.NewWallets(db)
 		service = service.NewWallets(repo)
-		router  = api.NewRouter(cfg, service)
+		router  = api.NewRouter(&cfg.Server, service)
 	)
 
 	var (
