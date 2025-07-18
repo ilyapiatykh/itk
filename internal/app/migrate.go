@@ -35,7 +35,7 @@ func migrateDB(URL string) error {
 			break
 		}
 
-		slog.Debug("Trying to connect to db", slog.Int("attempt", attempt))
+		slog.Debug("trying to connect to db", slog.Int("attempt", attempt))
 
 		time.Sleep(_defaultMaxTimeout)
 	}
@@ -52,10 +52,10 @@ func migrateDB(URL string) error {
 	}
 
 	if errors.Is(err, migrate.ErrNoChange) {
-		slog.Info("No new change")
+		slog.Info("no new change")
 		return nil
 	}
 
-	slog.Info("Sucsess")
+	slog.Info("sucsess")
 	return nil
 }

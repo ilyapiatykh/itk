@@ -82,8 +82,8 @@ func (r *Router) getWallet() func(ctx *fasthttp.RequestCtx) {
 	}
 }
 
-func sendJSON(ctx *fasthttp.RequestCtx, data any, statusCode int) {
-	ctx.SetStatusCode(statusCode)
+func sendJSON(ctx *fasthttp.RequestCtx, data any, status int) {
+	ctx.SetStatusCode(status)
 	ctx.SetContentType("application/json")
 
 	body, err := json.Marshal(data)
@@ -95,10 +95,11 @@ func sendJSON(ctx *fasthttp.RequestCtx, data any, statusCode int) {
 	ctx.SetBody(body)
 }
 
-func sendError(ctx *fasthttp.RequestCtx, description string, statusCode int, err error) {
+// sendError logs err and send response with passed description in JSON
+func sendError(ctx *fasthttp.RequestCtx, description string, status int, err error) {
 	if err != nil {
 		slog.Error(
-			"Failed while processing request",
+			"failed while processing request",
 			slog.Any("error", err),
 		)
 	}
@@ -107,5 +108,5 @@ func sendError(ctx *fasthttp.RequestCtx, description string, statusCode int, err
 		Description string `json:"description"`
 	}{Description: description}
 
-	sendJSON(ctx, body, statusCode)
+	sendJSON(ctx, body, status)
 }

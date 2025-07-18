@@ -11,7 +11,7 @@ import (
 func main() {
 	cfg, err := config.NewCfg()
 	if err != nil {
-		logging.Fatal("Failed to parse config", slog.Any("error", err))
+		logging.Fatal("failed to parse config", slog.Any("error", err))
 	}
 
 	app.Run(cfg)

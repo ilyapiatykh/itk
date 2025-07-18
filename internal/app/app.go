@@ -27,12 +27,12 @@ func Run(cfg *config.Config) {
 	)
 
 	if err := migrateDB(URL); err != nil {
-		logging.Fatal("Failed to migrate db", slog.Any("error", err))
+		logging.Fatal("failed to migrate db", slog.Any("error", err))
 	}
 
 	db, err := sql.Open("pgx", URL)
 	if err != nil {
-		logging.Fatal("Failed to open db conn", slog.Any("error", err))
+		logging.Fatal("failed to open db conn", slog.Any("error", err))
 	}
 	// To reuse conns and not create new ones without PgBouncer
 	db.SetMaxIdleConns(10)
@@ -42,7 +42,7 @@ func Run(cfg *config.Config) {
 	defer cancel()
 
 	if err := db.PingContext(ctx); err != nil {
-		logging.Fatal("Failed to ping db", slog.Any("error", err))
+		logging.Fatal("failed to ping db", slog.Any("error", err))
 	}
 
 	var (
@@ -68,13 +68,13 @@ func Run(cfg *config.Config) {
 	case <-osSignals:
 		stopService(router)
 
-		slog.Info("Service was stopped")
+		slog.Info("service was stopped")
 	case err := <-errCh:
-		slog.Error("Service failed", slog.Any("error", err))
+		slog.Error("service failed", slog.Any("error", err))
 
 		stopService(router)
 
-		slog.Info("Service was stopped")
+		slog.Info("service was stopped")
 		os.Exit(1)
 	}
 }
@@ -84,6 +84,6 @@ func stopService(r *api.Router) {
 	defer cancel()
 
 	if err := r.Stop(ctx); err != nil {
-		slog.Error("Failed to gracefully stop service", slog.Any("error", err))
+		slog.Error("failed to gracefully stop service", slog.Any("error", err))
 	}
 }
