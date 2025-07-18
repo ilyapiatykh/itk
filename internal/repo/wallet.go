@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"log/slog"
+	"fmt"
 	"sync"
 
 	"github.com/google/uuid"
@@ -30,17 +30,15 @@ type cache struct {
 
 func (c *cache) get(id uuid.UUID) (balance float64, ok bool) {
 	c.mu.RLock()
-	defer c.mu.RUnlock()
-
 	balance, ok = c.wallets[id]
+	c.mu.RUnlock() // without defer faster and more dangerous
 	return
 }
 
 func (c *cache) set(id uuid.UUID, balance float64) {
 	c.mu.Lock()
-	defer c.mu.Unlock()
-
 	c.wallets[id] = balance
+	c.mu.Unlock()
 }
 
 type Wallets struct {
@@ -55,23 +53,18 @@ func NewWallets(db *sql.DB) *Wallets {
 
 func (w *Wallets) GetBalance(ctx context.Context, id uuid.UUID) (float64, error) {
 	var balance float64
-	if balance, ok := w.cache.get(id); ok {
+
+	balance, ok := w.cache.get(id)
+	if ok {
 		return balance, nil
 	}
 
-	err := w.db.QueryRowContext(ctx, queryGetWallet, id).Scan(&balance)
-	if err != nil {
+	if err := w.db.QueryRowContext(ctx, queryGetWallet, id).Scan(&balance); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return 0, ErrNoWallet
 		}
 
-		slog.Error(
-			"failed to get balance",
-			slog.String("id", id.String()),
-			slog.Any("error", err),
-		)
-
-		return 0, err
+		return 0, fmt.Errorf("getting balance from db: %v", err)
 	}
 
 	w.cache.set(id, balance)
@@ -81,20 +74,12 @@ func (w *Wallets) GetBalance(ctx context.Context, id uuid.UUID) (float64, error)
 
 func (w *Wallets) UpdateBalance(ctx context.Context, id uuid.UUID, amount float64) (float64, error) {
 	var balance float64
-	err := w.db.QueryRowContext(ctx, queryCreateOrUpdateWallet, id, amount).Scan(&balance)
-	if err != nil {
+	if err := w.db.QueryRowContext(ctx, queryCreateOrUpdateWallet, id, amount).Scan(&balance); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return 0, ErrNegativeBalance
 		}
 
-		slog.Error(
-			"failed to update balance",
-			slog.String("id", id.String()),
-			slog.Float64("amount", amount),
-			slog.Any("error", err),
-		)
-
-		return 0, err
+		return 0, fmt.Errorf("updating balance in db: %v", err)
 	}
 
 	w.cache.set(id, balance)

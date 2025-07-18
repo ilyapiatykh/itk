@@ -37,7 +37,7 @@ func NewRouter(cfg *config.Server, service serviceProvider) *Router {
 			Handler:     r.Handler,
 		},
 		validator: validator.New(),
-		port: cfg.Port,
+		port:      cfg.Port,
 	}
 
 	r.GET("/status", func(ctx *fasthttp.RequestCtx) {

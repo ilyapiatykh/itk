@@ -8,19 +8,19 @@ import (
 
 type (
 	DB struct {
-		User     string `env:"POSTGRES_USER"`
-		Password string `env:"POSTGRES_PASSWORD"`
-		DBName   string `env:"POSTGRES_DB"`
+		User     string `env:"USER,required"`
+		Password string `env:"PASSWORD,required"`
+		DBName   string `env:"DBNAME,required"`
 	}
 
 	Server struct {
-		ReadTimeout time.Duration `env:"SERVER_READ_TIMEOUT"`
-		Port        string        `env:"PORT"`
+		ReadTimeout time.Duration `env:"READ_TIMEOUT" envDefault:"10s"`
+		Port        string        `env:"PORT" envDefault:":80"`
 	}
 
 	Config struct {
-		DB
-		Server
+		DB     `envPrefix:"POSTGRES_"`
+		Server `envPrefix:"SERVER_"`
 	}
 )
 

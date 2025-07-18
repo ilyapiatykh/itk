@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/fasthttp/router"
 	"github.com/google/uuid"
@@ -38,15 +39,14 @@ func (r *Router) postWallet() func(ctx *fasthttp.RequestCtx) {
 		}
 
 		if err := r.validator.Struct(body); err != nil {
-			sendError(ctx, "validation error", fasthttp.StatusBadRequest, err)
+			sendError(ctx, err.Error(), fasthttp.StatusBadRequest, nil)
 			return
 		}
 
 		wallet, err := r.service.UpdateWallet(ctx, body.WalletID, body.Amount, body.OperationType)
 		if err != nil {
-			// TODO
 			if errors.Is(err, repo.ErrNegativeBalance) {
-				sendError(ctx, err.Error(), fasthttp.StatusBadRequest, err)
+				sendError(ctx, err.Error(), fasthttp.StatusBadRequest, nil)
 				return
 			}
 
@@ -69,9 +69,8 @@ func (r *Router) getWallet() func(ctx *fasthttp.RequestCtx) {
 
 		wallet, err := r.service.GetWallet(ctx, id)
 		if err != nil {
-			// TODO
 			if errors.Is(err, repo.ErrNoWallet) {
-				sendError(ctx, "no such wallet", fasthttp.StatusBadRequest, err)
+				sendError(ctx, "no such wallet", fasthttp.StatusBadRequest, nil)
 				return
 			}
 
@@ -97,7 +96,13 @@ func sendJSON(ctx *fasthttp.RequestCtx, data any, statusCode int) {
 }
 
 func sendError(ctx *fasthttp.RequestCtx, description string, statusCode int, err error) {
-	// TODO log error
+	if err != nil {
+		slog.Error(
+			"Failed while processing request",
+			slog.Any("error", err),
+		)
+	}
+
 	body := struct {
 		Description string `json:"description"`
 	}{Description: description}

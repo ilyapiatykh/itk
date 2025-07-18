@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/url"
 	"time"
@@ -19,7 +20,7 @@ const (
 func migrateDB(URL string) error {
 	parsedURL, err := url.Parse(URL)
 	if err != nil {
-		return err
+		return fmt.Errorf("parsing db url: %v", err)
 	}
 
 	q := parsedURL.Query()
@@ -34,27 +35,27 @@ func migrateDB(URL string) error {
 			break
 		}
 
-		slog.Debug("trying to connect to db", slog.Int("attempt", attempt))
+		slog.Debug("Trying to connect to db", slog.Int("attempt", attempt))
 
 		time.Sleep(_defaultMaxTimeout)
 	}
 
 	if err != nil {
-		return err
+		return fmt.Errorf("connecting to db: %v", err)
 	}
 
 	err = m.Up()
 	defer m.Close()
 
 	if err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		return err
+		return fmt.Errorf("applying up migration: %v", err)
 	}
 
 	if errors.Is(err, migrate.ErrNoChange) {
-		slog.Info("no new change")
+		slog.Info("No new change")
 		return nil
 	}
 
-	slog.Info("success")
+	slog.Info("Sucsess")
 	return nil
 }

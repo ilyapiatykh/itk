@@ -12,6 +12,7 @@ Test task for position golang june+
 - prepared statements
 - cors
 - tls
+- cache via weak pointers
 
 ## 📊 `wrk` Load Test Results
 
