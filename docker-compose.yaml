@@ -4,20 +4,20 @@ services:
     container_name: itk
     restart: on-failure
     ports:
-      - "80${PORT}"
+      - "80${SERVER_PORT}"
     depends_on:
       - db
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost${PORT}/status"]
+      test: ["CMD", "curl", "-f", "http://localhost${SERVER_PORT}/status"]
       interval: 10s
       timeout: 3s
       retries: 3
       start_period: 5s
     environment:
-      - PORT=${PORT}
+      - SERVER_PORT=${SERVER_PORT}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_DBNAME=${POSTGRES_DBNAME}
 
   db:
     image: postgres:latest
@@ -30,4 +30,4 @@ services:
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_DB=${POSTGRES_DBNAME}

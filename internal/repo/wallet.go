@@ -14,12 +14,16 @@ var ErrNoWallet = errors.New("no wallet with such id")
 var ErrNegativeBalance = errors.New("wallet cannot have negative balance")
 
 const (
-	queryGetWallet            = "SELECT balance FROM wallets WHERE id = $1"
-	queryCreateOrUpdateWallet = `
+	queryGetWallet = "SELECT balance FROM wallets WHERE id = $1"
+	queryWithdraw  = `
+		UPDATE wallets
+			SET balance = wallets.balance - $2
+			WHERE id = $1 AND wallets.balance - $2 >= 0
+			RETURNING balance;`
+	queryDeposit = `
 		INSERT INTO wallets (id, balance) VALUES ($1, $2)
 			ON CONFLICT (id) DO UPDATE
 			SET balance = wallets.balance + $2
-			WHERE wallets.balance + $2 >= 0
 			RETURNING balance;`
 )
 
@@ -72,14 +76,25 @@ func (w *Wallets) GetBalance(ctx context.Context, id uuid.UUID) (float64, error)
 	return balance, nil
 }
 
-func (w *Wallets) UpdateBalance(ctx context.Context, id uuid.UUID, amount float64) (float64, error) {
+func (w *Wallets) Withdraw(ctx context.Context, id uuid.UUID, amount float64) (float64, error) {
 	var balance float64
-	if err := w.db.QueryRowContext(ctx, queryCreateOrUpdateWallet, id, amount).Scan(&balance); err != nil {
+	if err := w.db.QueryRowContext(ctx, queryWithdraw, id, amount).Scan(&balance); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return 0, ErrNegativeBalance
 		}
 
-		return 0, fmt.Errorf("updating balance in db: %v", err)
+		return 0, fmt.Errorf("withdraw from wallet in db: %v", err)
+	}
+
+	w.cache.set(id, balance)
+
+	return balance, nil
+}
+
+func (w *Wallets) Deposit(ctx context.Context, id uuid.UUID, amount float64) (float64, error) {
+	var balance float64
+	if err := w.db.QueryRowContext(ctx, queryDeposit, id, amount).Scan(&balance); err != nil {
+		return 0, fmt.Errorf("deposit to wallet in db: %v", err)
 	}
 
 	w.cache.set(id, balance)

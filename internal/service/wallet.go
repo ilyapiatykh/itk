@@ -9,7 +9,8 @@ import (
 
 type WalletsStorage interface {
 	GetBalance(ctx context.Context, id uuid.UUID) (float64, error)
-	UpdateBalance(ctx context.Context, id uuid.UUID, amount float64) (float64, error)
+	Deposit(ctx context.Context, id uuid.UUID, amount float64) (float64, error)
+	Withdraw(ctx context.Context, id uuid.UUID, amount float64) (float64, error)
 }
 
 type Wallets struct {
@@ -27,11 +28,14 @@ func (w *Wallets) GetWallet(ctx context.Context, id uuid.UUID) (wallet models.Wa
 }
 
 func (w *Wallets) UpdateWallet(ctx context.Context, id uuid.UUID, amount float64, operationType models.OperationType) (wallet models.Wallet, err error) {
-	if operationType == models.Withdraw {
-		amount = -amount
+	wallet.ID = id
+
+	switch operationType {
+	case models.Deposit:
+		wallet.Balance, err = w.s.Deposit(ctx, id, amount)
+	case models.Withdraw:
+		wallet.Balance, err = w.s.Withdraw(ctx, id, amount)
 	}
 
-	wallet.ID = id
-	wallet.Balance, err = w.s.UpdateBalance(ctx, id, amount)
 	return
 }
